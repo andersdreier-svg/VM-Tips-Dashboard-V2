@@ -1749,7 +1749,132 @@
       renderMatches();
       renderSyncStatus();
     }
+const PUBLIC_PROXY_URL = 'https://vm2026-results-proxy.andersdreier.workers.dev'
+  .trim()
+  .replace(/\/+$/, '');
 
+const PUBLIC_AUTO_SYNC = true;
+
+function applyPublicSourceUi() {
+  if (els.apiKey) {
+    els.apiKey.value = '';
+  }
+
+  if (els.proxyUrl) {
+    els.proxyUrl.value = PUBLIC_PROXY_URL;
+    els.proxyUrl.disabled = true;
+    els.proxyUrl.style.display = 'none';
+  }
+
+  if (els.autoSyncToggle) {
+    els.autoSyncToggle.checked = PUBLIC_AUTO_SYNC;
+    els.autoSyncToggle.disabled = true;
+
+    const checkboxRow = els.autoSyncToggle.closest('.checkbox-row');
+    if (checkboxRow) checkboxRow.style.display = 'none';
+  }
+
+  if (els.saveApiSettings) {
+    els.saveApiSettings.style.display = 'none';
+  }
+
+  if (els.clearApiSettings) {
+    els.clearApiSettings.style.display = 'none';
+  }
+
+  const connectionCard = els.proxyUrl ? els.proxyUrl.closest('.utility-card') : null;
+
+  if (connectionCard) {
+    const heading = connectionCard.querySelector('h3');
+    if (heading) heading.textContent = 'Fast datakilde';
+
+    const label = connectionCard.querySelector('label[for="proxyUrl"]');
+    if (label) label.style.display = 'none';
+
+    const note = connectionCard.querySelector('.muted-note');
+    if (note) {
+      note.textContent =
+        'Resultater hentes automatisk via den faste Cloudflare Worker. Deltagere skal ikke indtaste noget.';
+    }
+
+    const actions = connectionCard.querySelector('.sync-actions');
+    if (actions) actions.style.display = 'none';
+  }
+}
+
+loadApiSettings = function () {
+  state.api.apiKey = '';
+  state.api.proxyUrl = PUBLIC_PROXY_URL;
+  state.api.autoSync = PUBLIC_AUTO_SYNC;
+
+  localStorage.setItem(API_STORAGE_KEY, JSON.stringify({
+    apiKey: '',
+    proxyUrl: PUBLIC_PROXY_URL,
+    autoSync: PUBLIC_AUTO_SYNC
+  }));
+
+  applyPublicSourceUi();
+};
+
+readApiSettingsFromForm = function () {
+  state.api.apiKey = '';
+  state.api.proxyUrl = PUBLIC_PROXY_URL;
+  state.api.autoSync = PUBLIC_AUTO_SYNC;
+};
+
+saveApiSettings = function (options = {}) {
+  readApiSettingsFromForm();
+
+  localStorage.setItem(API_STORAGE_KEY, JSON.stringify({
+    apiKey: '',
+    proxyUrl: PUBLIC_PROXY_URL,
+    autoSync: PUBLIC_AUTO_SYNC
+  }));
+
+  applyPublicSourceUi();
+  scheduleAutoSync();
+  renderSyncStatus();
+
+  if (!options.quiet) {
+    showToast('Automatisk resultatkilde er aktiv.');
+  }
+};
+
+clearApiSettings = function () {
+  saveApiSettings({ quiet: true });
+  showToast('Den faste resultatkilde kan ikke ryddes af deltagere.');
+};
+
+buildSyncUrls = function () {
+  if (PUBLIC_PROXY_URL) {
+    return [
+      {
+        name: 'Fast Cloudflare Worker',
+        url: PUBLIC_PROXY_URL
+      }
+    ];
+  }
+
+  return FREE_SOURCE_ENDPOINTS;
+};
+
+renderSyncStatus = function () {
+  if (!els.syncStatus) return;
+
+  const mode = PUBLIC_PROXY_URL
+    ? 'via fast Cloudflare Worker'
+    : 'via direkte gratis kilde';
+
+  if (state.api.lastMessage) {
+    const kind = state.api.lastMessage.includes('ikke matchet') ? 'warn' : 'ok';
+    setSyncStatus(`${state.api.lastMessage} · ${mode}`, kind);
+  } else {
+    setSyncStatus(
+      `Automatisk sync er aktiv ${mode}. Resultater hentes automatisk, når siden åbnes.`,
+      'ok'
+    );
+  }
+};
     document.addEventListener('DOMContentLoaded', () => {
       cacheElements();
       loadResults();
